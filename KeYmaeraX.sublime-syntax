@@ -1,0 +1,191 @@
+%YAML1.2
+---
+# See http://www.sublimetext.com/docs/3/syntax.html
+name: KeYmaeraX Syntax
+file_extensions: [key, kyx, keyX]
+scope: source.key
+
+contexts:
+  prototype:
+    - include: comments
+
+  main:
+    - match: '\bFunctions.\n'
+      scope: keyword.other.functions.key
+      push: functions
+
+    - match: '\bProgramVariables.\n'
+      scope: keyword.other.variables.key
+      push: program_variables
+
+    - match: '\bProblem.\n'
+      scope: keyword.other.problem.key
+      push: problem
+
+  functions:
+    - meta_scope: meta.functions.key
+    - include: definitions
+    - match: '\bEnd.\n'
+      scope: keyword.control.end.key
+      pop: true
+
+  program_variables:
+    - meta_scope: meta.program_variables.key
+    - include: definitions
+    - match: '\bEnd.\n'
+      scope: keyword.control.end.key
+      pop: true
+
+  definitions:
+    - match: '\b(R) (\w+(?:\(\))?)(\.)'
+      captures:
+        1: storage.type.key
+        2: entity.name.variable.key
+        3: punctuation.terminator.key
+
+  problem:
+    - meta_scope: meta.problem.key
+    - include: dL_formulae
+    - match: '\bEnd.\n'
+      scope: keyword.control.end.key
+      pop: true
+
+
+  numbers:
+    - match: '(\b(?:[0-9](?:[0-9])*\.(?:[0-9]*)|(\.[0-9](?:[0-9])*))(?:[eE][+-]?[0-9](?:[0-9])*)?\b)'
+      scope: constant.invalid.key
+    - match: '((?:[0-9]+(?:\/[0-9]+)?|(?<=[:=])\*))'
+      scope: constant.numeric.key
+
+  booleans:
+    - match: '(?>\btrue\b|\bfalse\b)'
+      scope: constant.language.key
+
+  dL_terms:
+    - match: '(?=,)|(?=;)|(?=})|(?=\+\+)|(?=&)'
+      pop: true
+    - match: '\('
+      scope: punctuation.bracket.begin.key
+      push: brackets
+    - match: '(?=\))'
+      pop: true
+    #- match: '\)'
+    #  scope: punctuation.bracket.end.key
+    - match: "\'"
+      scope: keyword.operator.prime.key
+    - match: '(?>\^|(?<![:=])\*|/|-|\+)' # negative lookbehind for *
+      scope: keyword.operator.arithmetic.key
+    - include: numbers
+    # TODO: functions
+
+  dL_formulae:
+    - meta_content_scope: meta.formula.key
+    - match: '(?=;)|(?=})'
+      pop: true
+    #- match: '\('
+    #  push: brackets
+    - match: "\'"
+      scope: keyword.operator.prime.key
+    - match: '(?><=|>=|!=|=|>|<)'
+      scope: keyword.operator.relation.key
+    - match: '(?>\\forall|\\exists)'
+      scope: keyword.operator.quantifier.key
+    - match: '(?>!|&|\|)'
+      scope: keyword.operator.boolean.key
+    - match: '(?:<->|->|<-)'
+      scope: keyword.operator.arrow.key
+    # TODO: p(T) | p() | C{F}
+    - match: '\['
+      scope: entity.other.square.begin.key
+      push: dL_formulae_square
+    - match: '\<'
+      scope: entity.other.diamond.begin.key
+      push: dL_formulae_diamond
+    - include: dL_terms
+    - include: booleans
+
+  brackets:
+    - meta_content_scope: meta.brackets
+    - match: '\)'
+      scope: punctuation.bracket.end.key
+      pop: true
+    - include: dL_formulae
+
+  dL_formulae_square:
+    - match: '\]'
+      scope: entity.other.square.end.key
+      pop: true
+    - meta_scope: meta.formula.square.key
+    - include: dL_programs
+
+  dL_formulae_diamond:
+    - match: '\>'
+      scope: entity.other.diamond.end.key
+      pop: true
+    - meta_scope: meta.formula.diamond.key
+    - include: dL_programs
+
+  dL_programs:
+    - match: '\)'
+      scope: invalid.illegal.stray-bracket-end
+    - match: ';'
+      scope: punctuation.terminator.key
+    - match: '\w+(?:\s*)?(:=)'
+      captures:
+        1: keyword.operator.assignment.key
+      push: dL_terms
+    - match: \w+(\')(?:\s*)?(:=)
+      captures:
+        1: keyword.operator.prime.key
+        2: keyword.operator.assignment.key
+      push: dL_terms
+    - match: '\?'
+      scope: keyword.control.test.key
+      push: dL_formulae
+    - match: '(})(\*)'
+      captures:
+        1: punctuation.section.loop.end.key
+        2: keyword.operator.loop.key
+    - match: '\+\+'
+      scope: keyword.operator.choice.key
+    - match: '{'
+      scope: punctuation.section.block.begin.key
+    - match: '(}|};)'
+      scope: punctuation.section.block.end.key
+    - match: '@invariant'
+      scope: storage.type.invariant.key #?
+      push: invariants
+    - include: dL_diff_programs
+    - include: invariants
+
+  dL_diff_programs:
+    # FIXME
+    - match: '&'
+      scope: keyword.control.amp.key
+      push: dL_formulae
+    - match: \w+(\')(?:\s*)?(=)
+      captures:
+        1: keyword.operator.primee.key
+        2: keyword.operator.assignment.key
+      push: dL_terms
+    - match: ','
+      scope: punctuation.seperator.key
+
+  invariants:
+    - match: '\('
+      scope: punctuation.definition.invariant-arguments.begin.key #?
+      push: dL_formulae
+    - match: '\)'
+      scope: punctuation.definition.invariant-arguments.end.key
+      pop: true
+
+  comments:
+    - match: '/\*'
+      scope: punctuation.definition.comment.begin.key
+      push: block_comment
+
+  block_comment:
+    - meta_scope: comment.block.key
+    - match: '\*/'
+      scope: punctuation.definition.comment.end.key
+      pop: true
